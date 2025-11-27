@@ -96,7 +96,7 @@ const Login = () => {
                   )}
                   {error.includes('Server not available') && (
                     <div className="mt-2">
-                      <small>Please make sure the backend server is running on port 2025.</small>
+                      <small>Please make sure the backend server is running on port 8080.</small>
                     </div>
                   )}
                 </Alert>

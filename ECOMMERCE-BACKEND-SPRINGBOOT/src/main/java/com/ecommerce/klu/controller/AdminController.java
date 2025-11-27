@@ -5,6 +5,7 @@ import com.ecommerce.klu.model.User;
 import com.ecommerce.klu.model.Seller;
 import com.ecommerce.klu.model.Product;
 import com.ecommerce.klu.model.Order;
+import com.ecommerce.klu.dto.OrderDTO;
 import com.ecommerce.klu.service.AdminService;
 import com.ecommerce.klu.service.UserService;
 import com.ecommerce.klu.service.SellerService;
@@ -20,7 +21,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/admin")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "http://localhost:5173")
 public class AdminController {
 
     @Autowired
@@ -41,6 +42,15 @@ public class AdminController {
     @PostMapping("/register")
     public ResponseEntity<Map<String, Object>> register(@RequestBody Admin admin) {
         Map<String, Object> response = new HashMap<>();
+        // Registration for admin is disabled when a static admin has been set up.
+        // Allow registration only if no admin exists yet. In typical deployments we create
+        // the single admin via application properties (see AdminInitializer) and disable
+        // runtime registration to keep a single admin account.
+        if (adminService.getAllAdmins().size() > 0) {
+            response.put("success", false);
+            response.put("message", "Admin registration is disabled. Admin already exists.");
+            return ResponseEntity.status(403).body(response);
+        }
 
         if (adminService.existsByEmail(admin.getEmail())) {
             response.put("success", false);
@@ -99,8 +109,8 @@ public class AdminController {
     }
 
     @GetMapping("/orders")
-    public ResponseEntity<List<Order>> getAllOrders() {
-        return ResponseEntity.ok(orderService.getAllOrders());
+    public ResponseEntity<List<OrderDTO>> getAllOrders() {
+        return ResponseEntity.ok(orderService.getAllOrdersDTO());
     }
 
     @PostMapping("/create-seller")

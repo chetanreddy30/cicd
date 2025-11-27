@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { Container, Row, Col, Card, Button, Table, Modal, Form, Tabs, Tab, Badge, ProgressBar } from 'react-bootstrap';
 import { AuthContext } from '../context/AuthContext';
+import { toast } from 'react-toastify';
 import { productService } from '../services/productService';
 import { orderService } from '../services/orderService';
 import { sellerService } from '../services/sellerService';
@@ -62,6 +63,46 @@ const SellerDashboard = () => {
     fetchProducts();
     fetchOrders();
   }, []);
+
+  // SSE subscription for seller-related orders
+  useEffect(() => {
+    if (!user) return;
+    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+    const esUrl = `${base.replace(/\/$/, '')}/stream/orders`;
+    let es;
+    try {
+      es = new EventSource(esUrl);
+    } catch (e) {
+      console.error('SSE connection failed', e);
+      return;
+    }
+
+    const handle = (ev) => {
+      try {
+        const data = JSON.parse(ev.data);
+        if (!data || !data.id) return;
+        // If any order item belongs to this seller, update seller orders
+        const hasItem = data.orderItems?.some(it => it.sellerId === user.id);
+        if (hasItem) {
+          setOrders(prev => {
+            const exists = prev.find(o => o.id === data.id);
+            if (exists) return prev.map(o => o.id === data.id ? data : o);
+            return [data, ...prev];
+          });
+          toast.info(`Order #${data.id} updated for your products`);
+        }
+      } catch (err) {
+        // ignore
+      }
+    };
+
+    es.addEventListener('order-updated', handle);
+    es.addEventListener('order-created', handle);
+    es.onmessage = handle;
+    es.onerror = () => { try { es.close(); } catch(e){} };
+
+    return () => { try { es.close(); } catch(e){} };
+  }, [user]);
 
   const fetchProducts = async () => {
     try {

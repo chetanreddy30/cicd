@@ -1,10 +1,15 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Container, Row, Col, Card, Button, Badge, Form } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Badge, Form, Tab, Tabs } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
 import { productService } from '../../services/productService';
+import { reviewService } from '../../services/reviewService';
 import { CartContext } from '../../context/CartContext';
 import { AuthContext } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
+import ReviewSummary from '../review/ReviewSummary';
+import ReviewList from '../review/ReviewList';
+import ReviewForm from '../review/ReviewForm';
+import StarRating from '../common/StarRating';
 
 const ProductDetails = () => {
   const { id } = useParams();
@@ -16,10 +21,20 @@ const ProductDetails = () => {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false);
+  
+  // Review states
+  const [reviews, setReviews] = useState([]);
+  const [reviewStats, setReviewStats] = useState(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [canReview, setCanReview] = useState(false);
 
   useEffect(() => {
     fetchProduct();
-  }, [id]);
+    fetchReviews();
+    if (user) {
+      checkCanReview();
+    }
+  }, [id, user]);
 
   const fetchProduct = async () => {
     try {
@@ -32,6 +47,36 @@ const ProductDetails = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchReviews = async () => {
+    setReviewsLoading(true);
+    try {
+      const [reviewsData, statsData] = await Promise.all([
+        reviewService.getProductReviews(id),
+        reviewService.getProductRatingStats(id)
+      ]);
+      setReviews(reviewsData);
+      setReviewStats(statsData);
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  const checkCanReview = async () => {
+    try {
+      const canUserReview = await reviewService.canUserReviewProduct(user.id, id);
+      setCanReview(canUserReview);
+    } catch (error) {
+      console.error('Error checking review eligibility:', error);
+    }
+  };
+
+  const handleReviewAdded = () => {
+    fetchReviews();
+    checkCanReview();
   };
 
   const handleAddToCart = async () => {
@@ -113,6 +158,16 @@ const ProductDetails = () => {
             </div>
 
             <h1 className="h2 mb-2">{product.name}</h1>
+            
+            {/* Rating Display */}
+            {reviewStats && reviewStats.totalReviews > 0 && (
+              <div className="mb-3">
+                <StarRating rating={reviewStats.averageRating} size={18} readonly={true} />
+                <span className="ms-2 text-muted">
+                  ({reviewStats.totalReviews} review{reviewStats.totalReviews !== 1 ? 's' : ''})
+                </span>
+              </div>
+            )}
             
             <div className="mb-3">
               <span className="text-muted">Brand: </span>
@@ -220,6 +275,57 @@ const ProductDetails = () => {
               </Card.Body>
             </Card>
           </div>
+        </Col>
+      </Row>
+
+      {/* Reviews Section */}
+      <Row className="mt-5">
+        <Col>
+          <Tabs defaultActiveKey="reviews" className="mb-4">
+            <Tab eventKey="reviews" title="Reviews & Ratings">
+              <Row>
+                <Col lg={4}>
+                  <ReviewSummary stats={reviewStats} />
+                </Col>
+                <Col lg={8}>
+                  {user && canReview && (
+                    <ReviewForm 
+                      productId={id} 
+                      onReviewAdded={handleReviewAdded}
+                    />
+                  )}
+                  <ReviewList 
+                    reviews={reviews} 
+                    loading={reviewsLoading}
+                  />
+                </Col>
+              </Row>
+            </Tab>
+            <Tab eventKey="description" title="Product Description">
+              <Card>
+                <Card.Body>
+                  <h5>About this product</h5>
+                  <p>{product?.description || 'No description available.'}</p>
+                  
+                  <h6 className="mt-4">Specifications</h6>
+                  <Row>
+                    <Col md={6}>
+                      <ul className="list-unstyled">
+                        <li><strong>Brand:</strong> {product?.brand || 'N/A'}</li>
+                        <li><strong>Category:</strong> {product?.category || 'N/A'}</li>
+                      </ul>
+                    </Col>
+                    <Col md={6}>
+                      <ul className="list-unstyled">
+                        <li><strong>In Stock:</strong> {product?.stockQuantity || 0} units</li>
+                        <li><strong>Seller:</strong> {product?.seller?.businessName || 'N/A'}</li>
+                      </ul>
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
+            </Tab>
+          </Tabs>
         </Col>
       </Row>
     </Container>

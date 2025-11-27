@@ -34,6 +34,18 @@ export const orderService = {
     return api.put(`/orders/${orderId}/status?${params}`);
   },
 
+  // Assign a delivery person to an order
+  assignDeliveryPerson: (orderId, deliveryPersonId, actingUserId, actingUserType) => {
+    const paramsObj = { deliveryPersonId: deliveryPersonId.toString() };
+    if (actingUserId !== undefined && actingUserId !== null) paramsObj.actingUserId = actingUserId.toString();
+    if (actingUserType) paramsObj.actingUserType = actingUserType;
+    const params = new URLSearchParams(paramsObj);
+    return api.put(`/orders/${orderId}/assign-delivery?${params}`);
+  },
+
+  // Get orders assigned to a delivery person
+  getOrdersByDeliveryPerson: (deliveryPersonId) => api.get(`/orders/delivery-person/${deliveryPersonId}`),
+
   // Delete order
   deleteOrder: (id) => api.delete(`/orders/${id}`)
 };

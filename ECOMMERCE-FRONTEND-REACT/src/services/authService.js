@@ -58,6 +58,24 @@ export const authService = {
     }
   },
 
+  // Admin login
+  loginAdmin: async (credentials) => {
+    try {
+      console.log('Attempting admin login with:', credentials);
+      const response = await api.post('/admin/login', credentials);
+      console.log('Admin login response:', response);
+      if (response.success && response.admin) {
+        const userWithRole = { ...response.admin, role: 'ADMIN' };
+        localStorage.setItem('user', JSON.stringify(userWithRole));
+        return { ...response, admin: userWithRole };
+      }
+      return response;
+    } catch (error) {
+      console.error('Admin login error:', error);
+      throw error;
+    }
+  },
+
   // Logout
   logout: () => {
     localStorage.removeItem('user');

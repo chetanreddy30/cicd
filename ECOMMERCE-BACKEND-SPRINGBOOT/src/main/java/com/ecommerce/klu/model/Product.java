@@ -35,6 +35,10 @@ public class Product {
     @JsonIgnore
     private List<CartItem> cartItems;
 
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<Review> reviews;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -73,6 +77,9 @@ public class Product {
 
     public List<CartItem> getCartItems() { return cartItems; }
     public void setCartItems(List<CartItem> cartItems) { this.cartItems = cartItems; }
+
+    public List<Review> getReviews() { return reviews; }
+    public void setReviews(List<Review> reviews) { this.reviews = reviews; }
 
     @Override
     public String toString() {

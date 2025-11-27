@@ -21,6 +21,44 @@ const Orders = () => {
     }
   }, [user]);
 
+  // SSE subscription for customer's orders
+  useEffect(() => {
+    if (!user) return;
+    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+    const esUrl = `${base.replace(/\/$/, '')}/stream/orders`;
+    let es;
+    try {
+      es = new EventSource(esUrl);
+    } catch (e) {
+      console.error('SSE connection failed', e);
+      return;
+    }
+
+    const handle = (ev) => {
+      try {
+        const data = JSON.parse(ev.data);
+        if (!data || !data.id) return;
+        if (data.userId === user.id) {
+          setOrders(prev => {
+            const exists = prev.find(o => o.id === data.id);
+            if (exists) return prev.map(o => o.id === data.id ? data : o);
+            return [data, ...prev];
+          });
+          toast.info(`Order #${data.id} updated`);
+        }
+      } catch (err) {
+        // ignore parse errors
+      }
+    };
+
+    es.addEventListener('order-updated', handle);
+    es.addEventListener('order-created', handle);
+    es.onmessage = handle;
+    es.onerror = () => { try { es.close(); } catch(e){} };
+
+    return () => { try { es.close(); } catch(e){} };
+  }, [user]);
+
   useEffect(() => {
     filterAndSortOrders();
   }, [orders, statusFilter, searchTerm, sortBy]);

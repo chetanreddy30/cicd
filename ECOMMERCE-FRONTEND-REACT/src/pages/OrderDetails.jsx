@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Container, Row, Col, Card, Badge, Button, Alert, Table, ProgressBar, Modal } from 'react-bootstrap';
+import { Container, Row, Col, Card, Badge, Button, Alert, Table, ProgressBar, Modal, Form, ListGroup } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { orderService } from '../services/orderService';
 import { toast } from 'react-toastify';
+import { deliveryPersonService } from '../services/deliveryPersonService';
 
 const OrderDetails = () => {
   const { orderId } = useParams();
@@ -13,6 +14,9 @@ const OrderDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showTrackingModal, setShowTrackingModal] = useState(false);
+  const [deliveryPersons, setDeliveryPersons] = useState([]);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedDeliveryPersonId, setSelectedDeliveryPersonId] = useState(null);
 
   console.log('OrderDetails component mounted with orderId:', orderId);
   console.log('Current user:', user);
@@ -42,11 +46,49 @@ const OrderDetails = () => {
       }
       
       setOrder(orderData);
+      // load delivery persons list for assignment only if user is seller or admin
+      if (user && (user.role === 'SELLER' || user.role === 'ADMIN')) {
+        fetchDeliveryPersons();
+      }
     } catch (error) {
       console.error('Error fetching order details:', error);
       setError('Failed to load order details. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDeliveryPersons = async () => {
+    try {
+      const res = await deliveryPersonService.getActive();
+      // `api` response interceptor returns response.data directly, so use the
+      // returned value (array) instead of expecting `res.data`.
+      setDeliveryPersons(res || []);
+    } catch (err) {
+      console.error('Error fetching delivery persons:', err);
+    }
+  };
+
+  const openAssignModal = () => {
+    setSelectedDeliveryPersonId(order?.deliveryPersonId || null);
+    setShowAssignModal(true);
+  };
+
+  const handleAssign = async () => {
+    if (!selectedDeliveryPersonId) {
+      toast.error('Please select a delivery person');
+      return;
+    }
+
+    try {
+      // pass acting user id and type for server-side authorization
+      await orderService.assignDeliveryPerson(order.id, selectedDeliveryPersonId, user?.id, user?.role);
+      toast.success('Delivery person assigned');
+      setShowAssignModal(false);
+      fetchOrderDetails();
+    } catch (err) {
+      console.error('Error assigning delivery person:', err);
+      toast.error('Failed to assign delivery person');
     }
   };
 
@@ -357,6 +399,16 @@ const OrderDetails = () => {
                   <small className="text-muted d-block">Order ID</small>
                   <strong>#{order.id}</strong>
                 </div>
+                {order.deliveryPersonName && (
+                  <div className="mb-3">
+                    <small className="text-muted d-block">Delivery Person</small>
+                    <strong>{order.deliveryPersonName}</strong>
+                    <div className="text-muted small">{order.deliveryPersonPhone}{order.deliveryPersonVehicle ? ` • ${order.deliveryPersonVehicle}` : ''}</div>
+                    {order.deliveryAssignedAt && (
+                      <div className="text-muted small">Assigned: {formatDate(order.deliveryAssignedAt)}</div>
+                    )}
+                  </div>
+                )}
                 <div className="mb-3">
                   <small className="text-muted d-block">Payment Method</small>
                   <strong>{order.paymentMethod}</strong>
@@ -387,6 +439,11 @@ const OrderDetails = () => {
               >
                 Track Package
               </Button>
+                {(user && (user.role === 'SELLER' || user.role === 'ADMIN')) && (
+                  <Button variant="outline-success" onClick={openAssignModal}>
+                    Assign Delivery
+                  </Button>
+                )}
               <Button 
                 variant="outline-primary"
                 onClick={() => navigate('/orders')}
@@ -420,6 +477,13 @@ const OrderDetails = () => {
               <p className="text-muted mb-4">
                 Your package is currently <strong>{order.status.toLowerCase()}</strong>
               </p>
+                {order.deliveryPersonName && (
+                  <div className="mb-3">
+                    <h6 className="mb-1">Delivery Person</h6>
+                    <div><strong>{order.deliveryPersonName}</strong> • {order.deliveryPersonPhone}</div>
+                    {order.deliveryPersonVehicle && (<div className="small text-muted">Vehicle: {order.deliveryPersonVehicle}</div>)}
+                  </div>
+                )}
               <div className="text-start">
                 <div className="timeline">
                   {['Order Placed', 'Order Confirmed', 'Package Shipped', 'Out for Delivery', 'Delivered'].map((step, index) => {
@@ -445,6 +509,41 @@ const OrderDetails = () => {
             <Button variant="outline-secondary" onClick={() => setShowTrackingModal(false)}>
               Close
             </Button>
+          </Modal.Footer>
+        </Modal>
+        
+        {/* Assign Delivery Modal */}
+        <Modal show={showAssignModal} onHide={() => setShowAssignModal(false)} centered>
+          <Modal.Header closeButton>
+            <Modal.Title>Assign Delivery Person</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Form>
+              <Form.Label>Select Delivery Person</Form.Label>
+              <ListGroup variant="flush">
+                {deliveryPersons.length === 0 && (
+                  <ListGroup.Item>No active delivery persons available</ListGroup.Item>
+                )}
+                {deliveryPersons.map(dp => (
+                  <ListGroup.Item key={dp.id} action active={selectedDeliveryPersonId === dp.id} onClick={() => setSelectedDeliveryPersonId(dp.id)}>
+                    <div className="d-flex justify-content-between align-items-center">
+                      <div>
+                        <strong>{dp.name}</strong>
+                        <div className="small text-muted">{dp.phone} {dp.vehicle ? `• ${dp.vehicle}` : ''}</div>
+                        <div className="small text-muted">{dp.currentLocation}</div>
+                      </div>
+                      <div>
+                        {selectedDeliveryPersonId === dp.id && <Badge bg="primary">Selected</Badge>}
+                      </div>
+                    </div>
+                  </ListGroup.Item>
+                ))}
+              </ListGroup>
+            </Form>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowAssignModal(false)}>Cancel</Button>
+            <Button variant="primary" onClick={handleAssign}>Assign</Button>
           </Modal.Footer>
         </Modal>
       </Container>

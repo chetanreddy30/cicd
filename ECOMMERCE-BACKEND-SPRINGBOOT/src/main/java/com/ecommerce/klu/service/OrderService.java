@@ -29,6 +29,12 @@ public class OrderService {
     @Autowired
     private ProductService productService;
 
+    @Autowired
+    private DeliveryPersonService deliveryPersonService;
+
+    @Autowired
+    private SseEmitterService sseEmitterService;
+
     public List<Order> getAllOrders() {
         return orderRepository.findAll();
     }
@@ -112,7 +118,13 @@ public class OrderService {
         savedOrder.setOrderItems(orderItems); // Set the orderItems list
         cartService.clearCart(user);
 
-        return orderRepository.save(savedOrder);
+        Order finalOrder = orderRepository.save(savedOrder);
+        // send SSE event with DTO
+        try {
+            OrderDTO dto = convertToDTO(finalOrder);
+            sseEmitterService.sendEvent("order-created", dto);
+        } catch (Exception ignored) {}
+        return finalOrder;
     }
 
     public OrderDTO createOrderDTO(User user, String shippingAddress, String paymentMethod) {
@@ -127,9 +139,45 @@ public class OrderService {
         if (orderOpt.isPresent()) {
             Order order = orderOpt.get();
             order.setStatus(status);
-            return orderRepository.save(order);
+            Order saved = orderRepository.save(order);
+            try {
+                sseEmitterService.sendEvent("order-updated", convertToDTO(saved));
+            } catch (Exception ignored) {}
+            return saved;
         }
         return null;
+    }
+
+    // Assign a delivery person to an order
+    public Order assignDeliveryPerson(Long orderId, Long deliveryPersonId) {
+        Optional<Order> orderOpt = orderRepository.findById(orderId);
+        Optional<com.ecommerce.klu.model.DeliveryPerson> dpOpt = deliveryPersonService.getById(deliveryPersonId);
+
+        if (orderOpt.isPresent() && dpOpt.isPresent()) {
+            Order order = orderOpt.get();
+            order.setDeliveryPerson(dpOpt.get());
+            order.setDeliveryAssignedAt(java.time.LocalDateTime.now());
+            // If assigning, set status to SHIPPED -> OUT FOR DELIVERY depending on business flow
+            if ("SHIPPED".equals(order.getStatus())) {
+                order.setStatus("OUT_FOR_DELIVERY");
+            }
+            Order saved = orderRepository.save(order);
+            try {
+                sseEmitterService.sendEvent("order-updated", convertToDTO(saved));
+            } catch (Exception ignored) {}
+            return saved;
+        }
+        return null;
+    }
+
+    public List<Order> getOrdersByDeliveryPerson(Long deliveryPersonId) {
+        return orderRepository.findByDeliveryPersonId(deliveryPersonId);
+    }
+
+    public List<com.ecommerce.klu.dto.OrderDTO> getOrdersByDeliveryPersonDTO(Long deliveryPersonId) {
+        return getOrdersByDeliveryPerson(deliveryPersonId).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
     }
 
     public OrderDTO updateOrderStatusDTO(Long orderId, String status) {
@@ -151,19 +199,33 @@ public class OrderService {
             orderItemDTOs = List.of(); // Empty list if orderItems is null
         }
 
-        return new OrderDTO(
-                order.getId(),
-                order.getUser().getId(),
-                order.getUser().getFirstName(),
-                order.getUser().getLastName(),
-                order.getUser().getEmail(),
-                order.getShippingAddress(),
-                order.getPaymentMethod(),
-                order.getStatus(),
-                order.getTotalAmount(),
-                order.getOrderDate(),
-                orderItemDTOs
-        );
+    Long dpId = null; String dpName = null; String dpPhone = null; String dpVehicle = null; java.time.LocalDateTime dpAssignedAt = null;
+    if (order.getDeliveryPerson() != null) {
+        dpId = order.getDeliveryPerson().getId();
+        dpName = order.getDeliveryPerson().getName();
+        dpPhone = order.getDeliveryPerson().getPhone();
+        dpVehicle = order.getDeliveryPerson().getVehicle();
+        dpAssignedAt = order.getDeliveryAssignedAt();
+    }
+
+    return new OrderDTO(
+        order.getId(),
+        order.getUser().getId(),
+        order.getUser().getFirstName(),
+        order.getUser().getLastName(),
+        order.getUser().getEmail(),
+        order.getShippingAddress(),
+        order.getPaymentMethod(),
+        order.getStatus(),
+        order.getTotalAmount(),
+        order.getOrderDate(),
+        orderItemDTOs,
+        dpId,
+        dpName,
+        dpPhone,
+        dpVehicle,
+        dpAssignedAt
+    );
     }
 
     private OrderItemDTO convertOrderItemToDTO(OrderItem orderItem) {

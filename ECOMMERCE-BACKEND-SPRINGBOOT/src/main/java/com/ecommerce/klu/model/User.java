@@ -1,6 +1,7 @@
 package com.ecommerce.klu.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,7 +16,8 @@ public class User {
     private String username;
     private String email;
     
-    @JsonIgnore
+    // allow password to be set via JSON on create/update, but don't serialize it back in responses
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
     private String firstName;
     private String lastName;

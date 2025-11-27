@@ -21,6 +21,12 @@ public class Order {
     private BigDecimal totalAmount;
     private String shippingAddress;
     private String paymentMethod;
+    
+    @ManyToOne
+    @JoinColumn(name = "delivery_person_id")
+    private DeliveryPerson deliveryPerson;
+
+    private LocalDateTime deliveryAssignedAt;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private List<OrderItem> orderItems;
@@ -45,6 +51,12 @@ public class Order {
 
     public String getPaymentMethod() { return paymentMethod; }
     public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
+
+    public DeliveryPerson getDeliveryPerson() { return deliveryPerson; }
+    public void setDeliveryPerson(DeliveryPerson deliveryPerson) { this.deliveryPerson = deliveryPerson; }
+
+    public LocalDateTime getDeliveryAssignedAt() { return deliveryAssignedAt; }
+    public void setDeliveryAssignedAt(LocalDateTime deliveryAssignedAt) { this.deliveryAssignedAt = deliveryAssignedAt; }
 
     public List<OrderItem> getOrderItems() { return orderItems; }
     public void setOrderItems(List<OrderItem> orderItems) { this.orderItems = orderItems; }

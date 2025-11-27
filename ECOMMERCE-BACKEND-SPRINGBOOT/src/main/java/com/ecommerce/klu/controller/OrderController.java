@@ -13,7 +13,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/orders")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "http://localhost:5173")
 public class OrderController {
 
     @Autowired
@@ -21,6 +21,12 @@ public class OrderController {
 
     @Autowired
     private UserService userService;
+    
+    @Autowired
+    private com.ecommerce.klu.service.SellerService sellerService;
+
+    @Autowired
+    private com.ecommerce.klu.service.AdminService adminService;
 
     @GetMapping
     public ResponseEntity<List<OrderDTO>> getAllOrders() {
@@ -71,6 +77,73 @@ public class OrderController {
             return ResponseEntity.ok(updatedOrder);
         }
         return ResponseEntity.notFound().build();
+    }
+
+    @PutMapping("/{id}/assign-delivery")
+    public ResponseEntity<OrderDTO> assignDeliveryPerson(@PathVariable Long id,
+                                                         @RequestParam Long deliveryPersonId,
+                                                         @RequestParam(required = false) Long actingUserId,
+                                                         @RequestParam(required = false) String actingUserType) {
+        // Server-side authorization: only SELLER or ADMIN can assign delivery persons.
+        boolean permitted = false;
+
+        if (actingUserType != null && actingUserId != null) {
+            if ("ADMIN".equalsIgnoreCase(actingUserType)) {
+                // Prefer Admin table, but fallback to User role check if admin record isn't present
+                if (adminService.getAdminById(actingUserId).isPresent()) {
+                    permitted = true;
+                } else {
+                    Optional<User> u = userService.getUserById(actingUserId);
+                    if (u.isPresent() && "ADMIN".equalsIgnoreCase(u.get().getRole())) {
+                        permitted = true;
+                    }
+                }
+            } else if ("SELLER".equalsIgnoreCase(actingUserType)) {
+                // Prefer Seller table, but also accept a User with role SELLER
+                if (sellerService.getSellerById(actingUserId).isPresent()) {
+                    permitted = true;
+                } else {
+                    Optional<User> u = userService.getUserById(actingUserId);
+                    if (u.isPresent() && "SELLER".equalsIgnoreCase(u.get().getRole())) {
+                        permitted = true;
+                    }
+                }
+            }
+        } else if (actingUserId != null) {
+            // Try seller
+            if (sellerService.getSellerById(actingUserId).isPresent()) {
+                permitted = true;
+            } else {
+                // try admin
+                if (adminService.getAdminById(actingUserId).isPresent()) {
+                    permitted = true;
+                } else {
+                    // try generic user role (in case sellers are represented as users)
+                    Optional<User> u = userService.getUserById(actingUserId);
+                    if (u.isPresent()) {
+                        String role = u.get().getRole();
+                        if ("SELLER".equalsIgnoreCase(role) || "ADMIN".equalsIgnoreCase(role)) {
+                            permitted = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!permitted) {
+            return ResponseEntity.status(403).build();
+        }
+
+        Order updated = orderService.assignDeliveryPerson(id, deliveryPersonId);
+        if (updated != null) {
+            return ResponseEntity.ok(orderService.getOrderByIdDTO(updated.getId()).orElse(null));
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/delivery-person/{deliveryPersonId}")
+    public ResponseEntity<List<OrderDTO>> getOrdersByDeliveryPerson(@PathVariable Long deliveryPersonId) {
+        return ResponseEntity.ok(orderService.getOrdersByDeliveryPersonDTO(deliveryPersonId));
     }
 
     @DeleteMapping("/{id}")

@@ -88,6 +88,25 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const loginAdmin = async (credentials) => {
+    try {
+      const response = await authService.loginAdmin(credentials);
+      if (response.success) {
+        const userWithRole = { ...response.admin, role: 'ADMIN' };
+        setUser(userWithRole);
+        toast.success('Admin login successful!');
+        return { success: true };
+      } else {
+        toast.error(response.message || 'Admin login failed');
+        return { success: false, message: response.message };
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Admin login failed';
+      toast.error(errorMessage);
+      return { success: false, message: errorMessage };
+    }
+  };
+
   const registerSeller = async (sellerData) => {
     try {
       const response = await authService.registerSeller(sellerData);
@@ -128,6 +147,7 @@ export const AuthProvider = ({ children }) => {
     register,
     loginSeller,
     registerSeller,
+    loginAdmin,
     logout,
     updateUser,
     loading

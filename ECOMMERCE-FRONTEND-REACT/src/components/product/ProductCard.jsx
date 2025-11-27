@@ -3,6 +3,7 @@ import { Card, Button, Badge } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { CartContext } from '../../context/CartContext';
 import { AuthContext } from '../../context/AuthContext';
+import StarRating from '../common/StarRating';
 
 const ProductCard = ({ product }) => {
   const { addToCart, isInCart, getCartItemQuantity } = useContext(CartContext);
@@ -67,6 +68,12 @@ const ProductCard = ({ product }) => {
           <Card.Text className="text-muted small mb-2">
             {product.brand}
           </Card.Text>
+
+          {/* Rating Display - placeholder for now, will be populated from backend */}
+          <div className="mb-2">
+            <StarRating rating={0} size={14} readonly={true} />
+            <small className="text-muted ms-1">(0 reviews)</small>
+          </div>
           
           <Card.Text className="small text-muted" style={{ minHeight: '60px' }}>
             {product.description.length > 100 

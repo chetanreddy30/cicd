@@ -16,13 +16,21 @@ public class OrderDTO {
     private BigDecimal totalAmount;
     private LocalDateTime orderDate;
     private List<OrderItemDTO> orderItems;
+    // Delivery person info
+    private Long deliveryPersonId;
+    private String deliveryPersonName;
+    private String deliveryPersonPhone;
+    private String deliveryPersonVehicle;
+    private java.time.LocalDateTime deliveryAssignedAt;
 
     // Constructors
     public OrderDTO() {}
 
     public OrderDTO(Long id, Long userId, String userFirstName, String userLastName, String userEmail,
                    String shippingAddress, String paymentMethod, String status, BigDecimal totalAmount, 
-                   LocalDateTime orderDate, List<OrderItemDTO> orderItems) {
+                   LocalDateTime orderDate, List<OrderItemDTO> orderItems,
+                   Long deliveryPersonId, String deliveryPersonName, String deliveryPersonPhone, String deliveryPersonVehicle,
+                   LocalDateTime deliveryAssignedAt) {
         this.id = id;
         this.userId = userId;
         this.userFirstName = userFirstName;
@@ -34,6 +42,11 @@ public class OrderDTO {
         this.totalAmount = totalAmount;
         this.orderDate = orderDate;
         this.orderItems = orderItems;
+        this.deliveryPersonId = deliveryPersonId;
+        this.deliveryPersonName = deliveryPersonName;
+        this.deliveryPersonPhone = deliveryPersonPhone;
+        this.deliveryPersonVehicle = deliveryPersonVehicle;
+        this.deliveryAssignedAt = deliveryAssignedAt;
     }
 
     // Getters and Setters
@@ -124,4 +137,19 @@ public class OrderDTO {
     public void setOrderItems(List<OrderItemDTO> orderItems) {
         this.orderItems = orderItems;
     }
+
+    public Long getDeliveryPersonId() { return deliveryPersonId; }
+    public void setDeliveryPersonId(Long deliveryPersonId) { this.deliveryPersonId = deliveryPersonId; }
+
+    public String getDeliveryPersonName() { return deliveryPersonName; }
+    public void setDeliveryPersonName(String deliveryPersonName) { this.deliveryPersonName = deliveryPersonName; }
+
+    public String getDeliveryPersonPhone() { return deliveryPersonPhone; }
+    public void setDeliveryPersonPhone(String deliveryPersonPhone) { this.deliveryPersonPhone = deliveryPersonPhone; }
+
+    public String getDeliveryPersonVehicle() { return deliveryPersonVehicle; }
+    public void setDeliveryPersonVehicle(String deliveryPersonVehicle) { this.deliveryPersonVehicle = deliveryPersonVehicle; }
+
+    public java.time.LocalDateTime getDeliveryAssignedAt() { return deliveryAssignedAt; }
+    public void setDeliveryAssignedAt(java.time.LocalDateTime deliveryAssignedAt) { this.deliveryAssignedAt = deliveryAssignedAt; }
 }

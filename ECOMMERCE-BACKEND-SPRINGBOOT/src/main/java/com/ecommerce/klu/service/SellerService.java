@@ -3,6 +3,7 @@ package com.ecommerce.klu.service;
 import com.ecommerce.klu.model.Seller;
 import com.ecommerce.klu.repository.SellerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
@@ -12,6 +13,9 @@ public class SellerService {
 
     @Autowired
     private SellerRepository sellerRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     public List<Seller> getAllSellers() {
         return sellerRepository.findAll();
@@ -30,19 +34,35 @@ public class SellerService {
     }
 
     public Optional<Seller> login(String email, String password) {
-        return sellerRepository.findByEmailAndPassword(email, password);
+        Optional<Seller> sellerOpt = sellerRepository.findByEmail(email);
+        if (sellerOpt.isPresent()) {
+            Seller seller = sellerOpt.get();
+            if (passwordEncoder.matches(password, seller.getPassword())) {
+                return Optional.of(seller);
+            }
+        }
+        return Optional.empty();
     }
 
     public Seller registerSeller(Seller seller) {
         seller.setRole("SELLER");
+        if (seller.getPassword() != null) {
+            seller.setPassword(passwordEncoder.encode(seller.getPassword()));
+        }
         return sellerRepository.save(seller);
     }
 
     public Seller createSeller(Seller seller) {
+        if (seller.getPassword() != null) {
+            seller.setPassword(passwordEncoder.encode(seller.getPassword()));
+        }
         return sellerRepository.save(seller);
     }
 
     public Seller updateSeller(Seller seller) {
+        if (seller.getPassword() != null) {
+            seller.setPassword(passwordEncoder.encode(seller.getPassword()));
+        }
         return sellerRepository.save(seller);
     }
 

@@ -135,11 +135,17 @@ const Navbar = () => {
                       >
                         <User size={18} className="me-1" />
                         {user.firstName || user.username || 'User'}
-                        {user.role === 'SELLER' ? (
+                        {user.role === 'SELLER' && (
                           <Badge bg="success" className="ms-2" style={{ fontSize: '0.6rem' }}>
                             Seller
                           </Badge>
-                        ) : (
+                        )}
+                        {user.role === 'ADMIN' && (
+                          <Badge bg="dark" className="ms-2" style={{ fontSize: '0.6rem' }}>
+                            Admin
+                          </Badge>
+                        )}
+                        {user.role === 'USER' && (
                           <Badge bg="primary" className="ms-2" style={{ fontSize: '0.6rem' }}>
                             Customer
                           </Badge>
@@ -165,6 +171,16 @@ const Navbar = () => {
                         </NavDropdown.Item>
                       </motion.div>
                     )}
+
+                    {/* Admin Dashboard - only for admins */}
+                    {user.role === 'ADMIN' && (
+                      <motion.div whileHover={{ backgroundColor: '#f8f9fa' }}>
+                        <NavDropdown.Item as={Link} to="/admin">
+                          <Cog6ToothIcon className="me-2" style={{ width: '16px', height: '16px' }} />
+                          Admin Dashboard
+                        </NavDropdown.Item>
+                      </motion.div>
+                    )}
                     
                     <NavDropdown.Divider />
                     
@@ -177,12 +193,12 @@ const Navbar = () => {
                   </NavDropdown>
                 </>
               ) : (
-                <div className="d-flex gap-2">
+                <div className="d-flex gap-2 align-items-center">
                   <motion.div
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <Link to="/login" className="btn btn-outline-light rounded-pill px-4">
+                    <Link to="/login" className="btn btn-outline-light rounded-pill px-3">
                       Login
                     </Link>
                   </motion.div>
@@ -191,8 +207,18 @@ const Navbar = () => {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <Link to="/register" className="btn btn-warning rounded-pill px-4">
+                    <Link to="/register" className="btn btn-warning rounded-pill px-3">
                       Register
+                    </Link>
+                  </motion.div>
+
+                  {/* Admin login quick link when not logged in */}
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Link to="/admin/login" className="btn btn-outline-secondary rounded-pill px-3">
+                      Admin Login
                     </Link>
                   </motion.div>
                 </div>

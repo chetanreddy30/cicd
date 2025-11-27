@@ -2,7 +2,7 @@ import React, { useContext } from 'react';
 import { Navigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 
-const ProtectedRoute = ({ children, requireSeller = false }) => {
+const ProtectedRoute = ({ children, requireSeller = false, requireAdmin = false }) => {
   const { user, loading } = useContext(AuthContext);
 
   if (loading) {
@@ -20,6 +20,10 @@ const ProtectedRoute = ({ children, requireSeller = false }) => {
   }
 
   if (requireSeller && user.role !== 'SELLER') {
+    return <Navigate to="/" replace />;
+  }
+
+  if (requireAdmin && user.role !== 'ADMIN') {
     return <Navigate to="/" replace />;
   }
 
