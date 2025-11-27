@@ -10,7 +10,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/api/stream")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 public class StreamController {
 
     @Autowired
